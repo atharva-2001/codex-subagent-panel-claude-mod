@@ -1,0 +1,1 @@
+{ "name": "codex-runs", "version": "0.1.0", "description": "Band above the prompt showing live Codex exec runs: age, last transcript write, stall flag", "types": "./types/index.d.ts" }

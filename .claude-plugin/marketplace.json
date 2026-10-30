@@ -1,0 +1,5 @@
+{
+  "name": "codex-subagent-panel-claude-mod",
+  "owner": { "name": "atharva-2001" },
+  "plugins": [{ "name": "codex-runs", "source": "./" }]
+}
