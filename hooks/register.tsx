@@ -232,7 +232,7 @@ export const register: Register = on => {
     const { Box, Text, Button } = $.ui.resolve(e)
     const now = await $.clock.now()
     // runs a previous version stored lack the newer fields until the next poll
-    const list = ordered(all.map(r => ({ last: null, tokens: null, model: '?', effort: '?', tier: '?', sandbox: '?', ...r })), now)
+    const list = ordered(all.map(r => ({ last: null, tokens: null, model: '?', effort: '?', tier: '?', sandbox: '?', ...(r as Partial<Run>) }) as Run), now)
     const from = Math.min(await read($, offset), Math.max(0, list.length - ROWS))
     const shown = list.slice(from, from + ROWS)
     const stalledCount = list.filter(r => stalledAt(r, now)).length
@@ -250,24 +250,28 @@ export const register: Register = on => {
         {shown.map(r => {
           const quiet = r.lastWriteAt === null ? null : now - r.lastWriteAt
           const isStalled = stalledAt(r, now)
+          // the whole name row in the run's color, padded to the band's width; alarm chips keep their red
+          const fill = { color: 'inverseText', backgroundColor: isStalled ? 'error' : runColor(r.pid) } as const
+          const name = ` ${isStalled ? '✗' : '●'} ${r.slug.padEnd(width)} `
+          const stats = `  ${ago(now - r.startedAt).padStart(3)} · ${(quiet === null ? '?' : ago(quiet)).padStart(3)} quiet · ${tokens(r.tokens).padStart(5)} tok`
+          const details = [['model', r.model], ['effort', r.effort], ['tier', r.tier], ['sandbox', r.sandbox]] as const
+          const used = name.length + stats.length + 2 + details.reduce((n, [, v]) => n + v.length, 0) + 3 * (details.length - 1) + (isStalled ? 9 : 0)
           return (
             <Box key={String(r.pid)} flexDirection="column" marginTop={1}>
               <Button key={String(r.pid)} plain onPress={() => $.ui.toast(`${r.slug}: ${r.last ?? 'no activity yet'}`)}>
-                <Text color="inverseText" backgroundColor={isStalled ? 'error' : runColor(r.pid)} bold>
-                  {' '}{isStalled ? '✗' : '●'} {r.slug.padEnd(width)}{' '}
-                </Text>
-                <Text dimColor>
-                  {'  '}{ago(now - r.startedAt).padStart(3)} · {(quiet === null ? '?' : ago(quiet)).padStart(3)} quiet · {tokens(r.tokens).padStart(5)} tok
-                </Text>
-                <Text>{'  '}</Text>
-                <Text {...detailStyle('model', r.model)}>{r.model}</Text>
-                <Text dimColor> · </Text>
-                <Text {...detailStyle('effort', r.effort)}>{r.effort}</Text>
-                <Text dimColor> · </Text>
-                <Text {...detailStyle('tier', r.tier)}>{r.tier}</Text>
-                <Text dimColor> · </Text>
-                <Text {...detailStyle('sandbox', r.sandbox)}>{r.sandbox}</Text>
+                <Text {...fill} bold>{name}</Text>
+                <Text {...fill}>{stats}</Text>
+                {details.map(([kind, value], i) => {
+                  const style = detailStyle(kind, value)
+                  return (
+                    <Text key={kind} {...fill}>
+                      {i ? ' · ' : '  '}
+                      <Text {...('backgroundColor' in style ? style : fill)}>{value}</Text>
+                    </Text>
+                  )
+                })}
                 {isStalled && <Text {...ALARM}> STALLED </Text>}
+                <Text {...fill}>{' '.repeat(Math.max(0, e.props.bodyColumns - used))}</Text>
               </Button>
               {twoLines(r.last ?? '…', cols).filter(Boolean).map((line, i) => (
                 <Text key={String(i)} dimColor wrap="truncate-end">{'  '}{line}</Text>
